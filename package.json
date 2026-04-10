@@ -1,0 +1,46 @@
+{
+  "name": "scanse-sweep",
+  "version": "0.1.0",
+  "description": "Bun-native driver for the Scanse Sweep 2D scanning LiDAR. Pure JavaScript over bun-serialport, no native addons.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "bun test tests/"
+  },
+  "author": {
+    "name": "Fredrik Paulin",
+    "email": "fredrik@rymdskepp.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fredrikpaulin/scanse-sweep"
+  },
+  "keywords": [
+    "scanse",
+    "sweep",
+    "lidar",
+    "2d-lidar",
+    "bun",
+    "serial",
+    "robotics",
+    "sensors",
+    "scanning",
+    "range-finder"
+  ],
+  "os": ["darwin", "linux"],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "bun-serialport": "^0.1.0"
+  }
+}

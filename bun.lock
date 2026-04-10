@@ -1,0 +1,14 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "dependencies": {
+        "bun-serialport": "^0.1.0",
+      },
+    },
+  },
+  "packages": {
+    "bun-serialport": ["bun-serialport@0.1.0", "", { "os": [ "linux", "darwin", ] }, "sha512-J3pebyx83Usnqjsgf8oxPuhw74mGlxn1YuOwVQN/G0zAIf3krTE3Y1rfRG/8Ori/jwthR25AbLeb6yooAYoELg=="],
+  }
+}
