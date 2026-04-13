@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.1 — 2026-04-13
+
+Bug fixes, performance improvements, and Bun optimization.
+
+- Fixed pipe cleanup in mode switching — `#detachAll()` used a no-op anonymous function instead of `unpipe()`, causing listener accumulation when toggling between command and scan mode
+- Fixed leaked timeout in param-echo commands — the pending timeout was never cleared after a successful two-line response
+- Added checksum validation on ASCII command responses — `#sendSimpleCommand` and `#sendParamCommand` now reject on invalid checksums instead of silently accepting garbled data
+- Replaced scan assembler buffer strategy — switched from allocate-and-copy on every `push()` to a pre-allocated ring buffer with `subarray()` views and `copyWithin()` compaction, eliminating thousands of allocations per second during scanning
+- Replaced custom `sleep()` with `Bun.sleep()` for native Bun timer support
+- Removed unused `LF` constant export
+- Fixed operator precedence bug in ARCHITECTURE.md checksum formula
+- Fixed version info hardware field documented as 1 byte (actually 2 bytes) in ARCHITECTURE.md
+
 ## 0.1.0 — 2026-04-10
 
 Initial implementation.

@@ -61,5 +61,3 @@ export const MOTOR_READY_POLL_INTERVAL = 500
 export const MOTOR_READY_TIMEOUT = 10000
 export const MOTOR_STABILIZE_TIME = 6000
 
-// LF byte
-export const LF = 0x0A

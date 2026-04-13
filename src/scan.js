@@ -5,25 +5,43 @@ import { EventEmitter } from 'node:events'
 import { DATA_BLOCK_SIZE } from './constants.js'
 import { parseDataBlock } from './protocol.js'
 
+// Initial buffer: 512 bytes covers ~73 data blocks.
+// Grows if a single push delivers more.
+const INITIAL_BUF_SIZE = 512
+
 export function createScanAssembler() {
   const emitter = new EventEmitter()
-  let buffer = new Uint8Array(0)
+  let buffer = new Uint8Array(INITIAL_BUF_SIZE)
+  let writePos = 0     // bytes written into buffer
+  let readPos = 0      // bytes consumed from buffer
   let currentScan = []
   let seenFirstSync = false
 
   function push(chunk) {
-    // Append chunk to internal buffer
-    const next = new Uint8Array(buffer.length + chunk.length)
-    next.set(buffer)
-    next.set(chunk, buffer.length)
-    buffer = next
+    const pending = writePos - readPos
+    const needed = pending + chunk.length
+
+    // Grow or compact the buffer if chunk doesn't fit
+    if (needed > buffer.length) {
+      const next = new Uint8Array(Math.max(needed * 2, INITIAL_BUF_SIZE))
+      next.set(buffer.subarray(readPos, writePos))
+      buffer = next
+      writePos = pending
+      readPos = 0
+    } else if (writePos + chunk.length > buffer.length) {
+      // Compact: shift unread bytes to the front
+      buffer.copyWithin(0, readPos, writePos)
+      writePos = pending
+      readPos = 0
+    }
+
+    buffer.set(chunk, writePos)
+    writePos += chunk.length
 
     // Process complete 7-byte blocks
-    while (buffer.length >= DATA_BLOCK_SIZE) {
-      const block = buffer.slice(0, DATA_BLOCK_SIZE)
-      buffer = buffer.slice(DATA_BLOCK_SIZE)
-
-      const reading = parseDataBlock(block)
+    while (writePos - readPos >= DATA_BLOCK_SIZE) {
+      const reading = parseDataBlock(buffer.subarray(readPos, readPos + DATA_BLOCK_SIZE))
+      readPos += DATA_BLOCK_SIZE
 
       if (!reading.checksumValid) {
         emitter.emit('error', new Error('Data block checksum failed'))
@@ -33,9 +51,7 @@ export function createScanAssembler() {
       emitter.emit('reading', reading)
 
       if (reading.sync) {
-        // Sync bit marks start of new rotation
         if (seenFirstSync && currentScan.length > 0) {
-          // Emit the completed scan
           emitter.emit('scan', currentScan)
         }
         seenFirstSync = true
@@ -49,7 +65,8 @@ export function createScanAssembler() {
   }
 
   function reset() {
-    buffer = new Uint8Array(0)
+    writePos = 0
+    readPos = 0
     currentScan = []
     seenFirstSync = false
   }

@@ -83,7 +83,7 @@ export class Sweep extends EventEmitter {
     await this.#port.write(encodeCommand(CMD.STOP_SCAN))
 
     // Brief pause to let the sensor process and flush remaining data
-    await sleep(50)
+    await Bun.sleep(50)
     await this.#port.flush()
 
     // Re-enter command mode and send DX again for a clean response
@@ -125,7 +125,7 @@ export class Sweep extends EventEmitter {
 
     while (Date.now() < deadline) {
       if (await this.isMotorReady()) return true
-      await sleep(interval)
+      await Bun.sleep(interval)
     }
 
     throw new Error(`Motor did not stabilize within ${timeout}ms`)
@@ -204,7 +204,7 @@ export class Sweep extends EventEmitter {
     this.#exitScanMode()
 
     if (this.#lineParser) {
-      this.#port.off('data', () => {}) // pipe cleanup
+      this.#port.unpipe(this.#lineParser)
       this.#lineParser.removeAllListeners()
       this.#lineParser = null
     }
@@ -219,6 +219,10 @@ export class Sweep extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.#pendingResolve = (line) => {
         const response = parseSimpleResponse(line)
+        if (!response.valid) {
+          reject(new Error(`${cmd}: invalid response checksum`))
+          return
+        }
         resolve(response)
       }
       this.#pendingReject = reject
@@ -248,6 +252,10 @@ export class Sweep extends EventEmitter {
         // Line 2: status + sum
         const { status, valid } = parseParamEchoLine2(line)
         this.#paramEchoState = null
+        if (!valid) {
+          reject(new Error(`${cmd}: invalid response checksum`))
+          return
+        }
         resolve({ cmd, param, status, valid })
       }
 
@@ -278,16 +286,20 @@ export class Sweep extends EventEmitter {
 
   #resolvePending(value) {
     const resolve = this.#pendingResolve
-    if (!this.#paramEchoState || this.#paramEchoState.waitingForLine2) {
-      // Only clear timeout if we're done (not mid param-echo)
-      if (!this.#paramEchoState) {
-        clearTimeout(this.#pendingTimeout)
-        this.#pendingResolve = null
-        this.#pendingReject = null
-        this.#pendingTimeout = null
-      }
-    }
-    if (resolve) resolve(value)
+    if (!resolve) return
+
+    // For param-echo commands, line 1 sets waitingForLine2 inside the
+    // resolve callback. Call resolve first, then check if we're done.
+    resolve(value)
+
+    // If paramEchoState still exists after resolve, we're mid param-echo
+    // (line 1 just arrived) — keep the timeout running.
+    if (this.#paramEchoState) return
+
+    clearTimeout(this.#pendingTimeout)
+    this.#pendingResolve = null
+    this.#pendingReject = null
+    this.#pendingTimeout = null
   }
 
   #clearPending() {
@@ -299,6 +311,3 @@ export class Sweep extends EventEmitter {
   }
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}

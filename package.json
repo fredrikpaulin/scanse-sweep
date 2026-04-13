@@ -1,6 +1,6 @@
 {
   "name": "scanse-sweep",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Bun-native driver for the Scanse Sweep 2D scanning LiDAR. Pure JavaScript over bun-serialport, no native addons.",
   "type": "module",
   "main": "src/index.js",
